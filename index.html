@@ -108,13 +108,16 @@
 
   async function descifrar(reg, doc, pin, iter) {
     const base = await subtle.importKey('raw', enc.encode(doc + '|' + pin), 'PBKDF2', false, ['deriveBits']);
-    const bits = new Uint8Array(await subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(reg.s), iterations: iter }, base, 512));
-    const kMac = await subtle.importKey('raw', bits.slice(32), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const dk = await subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(reg.s), iterations: iter }, base, 256);
+    const kDk = await subtle.importKey('raw', dk, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const encRaw = await subtle.sign('HMAC', kDk, enc.encode('enc'));
+    const macRaw = await subtle.sign('HMAC', kDk, enc.encode('mac'));
+    const kMac = await subtle.importKey('raw', macRaw, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
     const s = b64(reg.s), iv = b64(reg.iv), ct = b64(reg.ct);
     const datos = new Uint8Array(s.length + iv.length + ct.length);
     datos.set(s, 0); datos.set(iv, s.length); datos.set(ct, s.length + iv.length);
     if (!(await subtle.verify('HMAC', kMac, b64(reg.m), datos))) return null;
-    const kEnc = await subtle.importKey('raw', bits.slice(0, 32), 'AES-CTR', false, ['decrypt']);
+    const kEnc = await subtle.importKey('raw', encRaw, 'AES-CTR', false, ['decrypt']);
     const plano = await subtle.decrypt({ name: 'AES-CTR', counter: iv, length: 64 }, kEnc, ct);
     return JSON.parse(new TextDecoder().decode(plano));
   }
