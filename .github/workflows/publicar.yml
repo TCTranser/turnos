@@ -1,0 +1,30 @@
+name: Publicar turnos
+on:
+  repository_dispatch:
+    types: [publicar-turnos]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: publicar-turnos
+  cancel-in-progress: false
+jobs:
+  guardar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Guardar datos cifrados
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+        run: node scripts/guardar.mjs
+      - name: Confirmar cambios
+        run: |
+          git config user.name "turnos-bot"
+          git config user.email "turnos-bot@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -m "Actualiza turnos publicados"
+          git push
