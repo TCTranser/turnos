@@ -80,6 +80,13 @@
   .resumen span { background: var(--amarillo-3); color: var(--azul); border-radius: 999px; padding: 5px 11px; font-weight: 600; }
   .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: .78rem; color: var(--suave); }
   .leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--borde); }
+  .llegada { border-left: 6px solid var(--verde); }
+  .llegada h2 { margin-bottom: 6px; }
+  .llegada .fila { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .9rem; margin: 6px 0 2px; }
+  .llegada .fila b { font-weight: 800; }
+  .llegada button { margin-top: 12px; background: var(--verde); color: #fff; }
+  .llegada button:hover { background: var(--teal); }
+  .llegada .sin { color: var(--suave); font-size: .9rem; margin: 0; }
   .oculto { display: none; }
 
   /* Pie */
@@ -125,6 +132,7 @@
 
   <section id="resultado" class="oculto">
     <div id="saludo" class="tarjeta"></div>
+    <div id="llegada" class="tarjeta llegada"></div>
     <div id="hoy" class="hoy"></div>
     <div id="meses"></div>
     <button id="salir" class="secundario" type="button">Salir</button>
@@ -150,6 +158,10 @@
   const hex = buf => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
   const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const FORM = 'https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=GkjzoYUkr0yFmBXzpZQ7f137oo8tAOdLpc3zcd1xL0hUQk1WMEFHOFJNVExJQjAxU0RWTVYyWDlWQS4u';
+  const Q = { emp: 'r10a2690187ca4e09b97da9445201e608', fecha: 'r7c0897f9756a4abb9fccd8bbb57e9c79', turno: 'rf272c69dcd9146d19f97219b6d7b0e3e', ubic: 'r783c9c47964441ffb31fed00c2d3740f', cod: 're95e62bd4ffe4e6f9450ff9e047b5cc3' };
+  const MIN_ANTES = 60;
+  let sesion = null;
   const color = c => /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20}|rgba?\([0-9 ,.]+\))$/.test(c || '') ? c : '';
 
   function contraste(c) {
@@ -258,12 +270,89 @@
       <div class="cal">${html}</div><div class="resumen">${resumen}</div><div class="leyenda">${leyenda}</div></section>`;
   }
 
+  const iso = d => ymd(d) + '-' + String(d.getDate()).padStart(2, '0');
+  const minutos = h => { const q = String(h || '').split(':'); return q.length < 2 ? -1 : Number(q[0]) * 60 + Number(q[1]); };
+
+  // Turno vigente para registrar llegada: hoy o el nocturno que empezó ayer, desde 60 min antes hasta el final.
+  function turnoParaLlegada(encontrados) {
+    const ahora = new Date();
+    for (const delta of [0, -1, 1]) {
+      const f = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + delta);
+      for (const e of encontrados) {
+        if (e.periodo !== ymd(f)) continue;
+        const cod = (e.dato.t || '').split(',')[f.getDate() - 1] || '';
+        const t = e.turnos[cod];
+        if (!cod || cod === 'D' || !t || t.d) continue;
+        const ini = minutos(t.i), fin = minutos(t.f);
+        if (ini < 0 || fin < 0) continue;
+        const inicio = new Date(f.getFullYear(), f.getMonth(), f.getDate(), 0, ini);
+        const dur = fin > ini ? fin - ini : fin + 1440 - ini;
+        const desde = new Date(inicio.getTime() - MIN_ANTES * 60000), hasta = new Date(inicio.getTime() + dur * 60000);
+        if (ahora >= desde && ahora <= hasta) return { fecha: iso(f), cod, t, inicio, emp: e.dato.c || '' };
+      }
+    }
+    return null;
+  }
+
+  let llaveLlegada = null;
+  function pintarLlegada(forzar) {
+    const caja = $('llegada');
+    const x = sesion && turnoParaLlegada(sesion.encontrados);
+    const llave = x ? x.fecha + '|' + x.cod : '-';
+    if (!forzar && llave === llaveLlegada) return;
+    llaveLlegada = llave;
+    if (!x || !x.emp) {
+      caja.innerHTML = `<h2>Registrar mi llegada</h2><p class="sin">El registro se habilita desde ${MIN_ANTES} minutos antes del inicio de tu turno y hasta que termina.</p>`;
+      return;
+    }
+    const hora = x.inicio.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+    caja.innerHTML = `<h2>Registrar mi llegada</h2>
+      <div class="fila"><span><b>${esc(x.t.n || x.cod)}</b> (${esc(x.cod)})</span><span>${esc(hora)}</span><span>${esc(x.t.i)} a ${esc(x.t.f)}</span></div>
+      <button id="btnLlegada" type="button">Confirmar que llegué</button>
+      <div id="msgLlegada" class="msg" role="status" aria-live="polite"></div>
+      <p class="nota">Al confirmar se registra la hora y la ubicación de tu dispositivo (latitud y longitud) solo para validar tu asistencia, según la Ley 1581 de 2012 de protección de datos. Se abrirá un formulario ya diligenciado: solo debes presionar <b>Enviar</b>.</p>`;
+    $('btnLlegada').addEventListener('click', () => registrarLlegada(x));
+  }
+
+  function ubicacion() {
+    return new Promise(res => {
+      if (!navigator.geolocation) return res('sin ubicacion');
+      navigator.geolocation.getCurrentPosition(
+        p => res(p.coords.latitude.toFixed(6) + ',' + p.coords.longitude.toFixed(6) + ',' + Math.round(p.coords.accuracy)),
+        () => res('sin ubicacion'), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    });
+  }
+
+  async function registrarLlegada(x) {
+    const msg = $('msgLlegada'), btn = $('btnLlegada');
+    // Abrir la pestaña de inmediato para que el navegador no la bloquee.
+    const ventana = window.open('', '_blank');
+    btn.disabled = true; btn.textContent = 'Obteniendo ubicación…'; msg.textContent = ''; msg.className = 'msg';
+    try {
+      const ub = await ubicacion();
+      const codigo = hex(await subtle.digest('SHA-256', enc.encode(['ASIS', sesion.doc, sesion.pin, x.emp, x.fecha, x.cod].join('|')))).slice(0, 16);
+      const url = FORM + '&' + [[Q.emp, x.emp], [Q.fecha, x.fecha], [Q.turno, x.cod], [Q.ubic, ub], [Q.cod, codigo]]
+        .map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+      if (ventana) ventana.location.href = url; else window.location.href = url;
+      msg.textContent = ub === 'sin ubicacion'
+        ? 'No se pudo obtener la ubicación (permiso negado o sin señal). El registro quedará sin ubicación. Presiona Enviar en el formulario.'
+        : 'Formulario abierto. Presiona Enviar para completar tu registro.';
+      if (ub === 'sin ubicacion') msg.className = 'msg error';
+    } catch (e) {
+      if (ventana) ventana.close();
+      msg.textContent = 'No fue posible preparar el registro.'; msg.className = 'msg error';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Confirmar que llegué';
+    }
+  }
+
   function mostrar(encontrados) {
     const nombre = encontrados[encontrados.length - 1].dato.n || '';
     $('saludo').innerHTML = `<h2>Hola, ${esc(nombre)}</h2><div class="sub" style="margin:0">Estos son tus turnos publicados. Cualquier cambio aparecerá aquí cuando se publique.</div>`;
     const hoy = new Date(), man = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 1);
     $('hoy').innerHTML = tarjetaDia('Hoy', turnoDe(encontrados, hoy)) + tarjetaDia('Mañana', turnoDe(encontrados, man));
     $('meses').innerHTML = encontrados.map(mes).join('');
+    pintarLlegada(true);
     $('acceso').classList.add('oculto');
     $('resultado').classList.remove('oculto');
   }
@@ -275,7 +364,10 @@
     if (!subtle) { msg.textContent = 'Este navegador no permite la consulta segura. Abre la página con https en un navegador actualizado.'; msg.className = 'msg error'; return; }
     btn.disabled = true; btn.textContent = 'Consultando…';
     try {
-      mostrar(await consultar($('doc').value, $('pin').value.trim()));
+      const doc = normDoc($('doc').value), pin = $('pin').value.trim();
+      const encontrados = await consultar(doc, pin);
+      sesion = { doc, pin, encontrados };
+      mostrar(encontrados);
       $('pin').value = '';
     } catch (e) {
       msg.textContent = e.message || 'No fue posible consultar.'; msg.className = 'msg error';
@@ -284,8 +376,11 @@
     }
   });
 
+  setInterval(() => { if (sesion) pintarLlegada(); }, 60000);
+
   $('salir').addEventListener('click', () => {
-    $('meses').innerHTML = ''; $('hoy').innerHTML = ''; $('saludo').innerHTML = '';
+    sesion = null;
+    $('meses').innerHTML = ''; $('hoy').innerHTML = ''; $('saludo').innerHTML = ''; $('llegada').innerHTML = '';
     $('doc').value = ''; $('pin').value = '';
     $('resultado').classList.add('oculto'); $('acceso').classList.remove('oculto');
   });
