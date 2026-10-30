@@ -12,7 +12,7 @@ else {
   const d = typeof p.datos === 'string' ? JSON.parse(p.datos) : p.datos;
   const okStr = (s, re) => typeof s === 'string' && re.test(s);
   const B64 = /^[A-Za-z0-9+/]+={0,2}$/;
-  if (!d || d.v !== 1) throw new Error('Formato desconocido');
+  if (!d || d.v !== 2) throw new Error('Formato desconocido');
   if (!okStr(d.grupo, /^[\p{L}\p{N} _.-]{1,60}$/u)) throw new Error('Grupo inválido');
   if (!okStr(d.periodo, /^\d{4}-\d{2}$/)) throw new Error('Periodo inválido');
   if (!Array.isArray(d.r)) throw new Error('Sin registros');
@@ -26,7 +26,7 @@ else {
     if (!/^[A-Za-z0-9]{1,6}$/.test(k)) continue;
     turnos[k] = { n: String(t.n || k).slice(0, 40), i: String(t.i || '').slice(0, 5), f: String(t.f || '').slice(0, 5), c: String(t.c || '').slice(0, 30), d: !!t.d };
   }
-  const limpio = { v: 1, grupo: d.grupo, periodo: d.periodo, version: Number(d.version) || 0, generado: String(d.generado || new Date().toISOString()).slice(0, 30), iter: Number(d.iter) || 60000, turnos, r: d.r };
+  const limpio = { v: 2, grupo: d.grupo, periodo: d.periodo, version: Number(d.version) || 0, generado: String(d.generado || new Date().toISOString()).slice(0, 30), iter: Number(d.iter) || 60000, turnos, r: d.r };
   fs.mkdirSync(DIR, { recursive: true });
   const slug = d.grupo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'grupo';
   fs.writeFileSync(path.join(DIR, `${d.periodo}_${slug}.json`), JSON.stringify(limpio));
