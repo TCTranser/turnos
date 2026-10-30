@@ -101,6 +101,18 @@
   details.ausencia > summary::-webkit-details-marker { display: none; }
   details.ausencia > summary::after { content: " ▾"; color: var(--suave); }
   details.ausencia[open] > summary::after { content: " ▴"; }
+  .cal .d .x { position: absolute; top: 3px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--amarillo); border: 1px solid var(--azul); }
+  .extras { margin-top: 16px; border-top: 1px solid var(--borde); padding-top: 12px; }
+  .extras h3 { margin: 0 0 8px; font-size: .95rem; font-weight: 900; color: var(--teal); }
+  .extras .tot { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .extras .tot span { background: var(--teal-3); color: var(--azul); border-radius: 8px; padding: 6px 10px; font-size: .82rem; }
+  .extras .tot b { font-weight: 900; }
+  .extras table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .extras th { text-align: right; color: var(--suave); font-weight: 700; padding: 4px 6px; border-bottom: 1px solid var(--borde); }
+  .extras td { text-align: right; padding: 5px 6px; border-bottom: 1px solid #eef0f1; }
+  .extras th:first-child, .extras td:first-child { text-align: left; }
+  .extras .nota { margin-top: 10px; }
+  .hoy em { display: block; font-style: normal; font-size: .78rem; margin-top: 6px; color: var(--amarillo-3); }
   .oculto { display: none; }
 
   /* Pie */
@@ -235,12 +247,26 @@
     return encontrados;
   }
 
+  // x = [[día, HED, HEN, RN, DF, HE], ...]
+  const extrasDia = (e, dia) => (e.dato.x || []).find(r => r[0] === dia);
+  const fmtH = v => (Math.round(v * 100) / 100).toLocaleString('es-CO');
+  function textoExtras(r) {
+    if (!r) return '';
+    const [, hed, hen, rn, df, he] = r; const p = [];
+    if (hed) p.push('Extra diurna ' + fmtH(hed) + ' h');
+    if (hen) p.push('Extra nocturna ' + fmtH(hen) + ' h');
+    if (!hed && !hen && he) p.push('Extra ' + fmtH(he) + ' h');
+    if (rn) p.push('Recargo nocturno ' + fmtH(rn) + ' h');
+    if (df) p.push('Dominical/festivo ' + fmtH(df) + ' h');
+    return p.join(' · ');
+  }
+
   function turnoDe(encontrados, fecha) {
     const p = ymd(fecha);
     for (const e of encontrados) {
       if (e.periodo !== p) continue;
       const cod = (e.dato.t || '').split(',')[fecha.getDate() - 1] || '';
-      if (cod && !(e.turnos[cod] && e.turnos[cod].d) && cod !== 'D') return { cod, t: e.turnos[cod] };
+      if (cod && !(e.turnos[cod] && e.turnos[cod].d) && cod !== 'D') return { cod, t: e.turnos[cod], x: extrasDia(e, fecha.getDate()) };
     }
     for (const e of encontrados) if (e.periodo === p) {
       const cod = (e.dato.t || '').split(',')[fecha.getDate() - 1] || '';
@@ -254,7 +280,8 @@
     const t = x.t || {};
     const desc = t.d || x.cod === 'D';
     const horario = !desc && t.i ? `${esc(t.i)} a ${esc(t.f)}` : '';
-    return `<div><small>${titulo}</small><strong>${desc ? 'Descanso' : esc(t.n || x.cod)}</strong><span>${horario}</span></div>`;
+    const ex = !desc ? textoExtras(x.x) : '';
+    return `<div><small>${titulo}</small><strong>${desc ? 'Descanso' : esc(t.n || x.cod)}</strong><span>${horario}</span>${ex ? `<em>${esc(ex)}</em>` : ''}</div>`;
   }
 
   function mes(e) {
@@ -277,7 +304,9 @@
       if (f.toDateString() === hoy.toDateString()) clases.push('es-hoy');
       const estilo = bg ? `style="background:${bg};color:${contraste(bg)}"` : '';
       const h = cod && t.i && !t.d ? `${esc(t.i)}-${esc(t.f)}` : '';
-      html += `<div class="${clases.join(' ')}" ${estilo} title="${esc(t.n || cod)}"><div class="n" ${bg ? `style="color:${contraste(bg)}"` : ''}>${d}</div><div class="t">${esc(cod)}</div><div class="h">${h}</div></div>`;
+      const xr = extrasDia(e, d);
+      const tit = (t.n || cod) + (xr ? ' · ' + textoExtras(xr) : '');
+      html += `<div class="${clases.join(' ')}" ${estilo} title="${esc(tit)}"><div class="n" ${bg ? `style="color:${contraste(bg)}"` : ''}>${d}</div>${xr ? '<i class="x"></i>' : ''}<div class="t">${esc(cod)}</div><div class="h">${h}</div></div>`;
       if (cod) cuenta[cod] = (cuenta[cod] || 0) + 1;
     }
     const resumen = Object.entries(cuenta).map(([c, n]) => `<span>${esc((e.turnos[c] && e.turnos[c].n) || c)}: ${n}</span>`).join('');
@@ -285,7 +314,28 @@
     const gen = e.generado ? new Date(e.generado).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : '';
     return `<section class="tarjeta"><h2>${MESES[m - 1][0].toUpperCase() + MESES[m - 1].slice(1)} ${y}</h2>
       <div class="sub">Grupo ${esc(e.grupo)} · versión ${esc(e.version)}${gen ? ' · publicada ' + esc(gen) : ''}</div>
-      <div class="cal">${html}</div><div class="resumen">${resumen}</div><div class="leyenda">${leyenda}</div></section>`;
+      <div class="cal">${html}</div><div class="resumen">${resumen}</div><div class="leyenda">${leyenda}</div>${bloqueExtras(e, y, m)}</section>`;
+  }
+
+  function bloqueExtras(e, y, m) {
+    const x = e.dato.x || [];
+    if (!x.length) return '';
+    const s = i => x.reduce((a, r) => a + (Number(r[i]) || 0), 0);
+    const hed = s(1), hen = s(2), rn = s(3), df = s(4), he = s(5);
+    const sinSep = hed + hen === 0;
+    const tot = [];
+    if (!sinSep) { tot.push(`<span>Extra diurna <b>${fmtH(hed)} h</b></span>`, `<span>Extra nocturna <b>${fmtH(hen)} h</b></span>`); }
+    else if (he) tot.push(`<span>Horas extra <b>${fmtH(he)} h</b></span>`);
+    tot.push(`<span>Recargo nocturno <b>${fmtH(rn)} h</b></span>`, `<span>Dominical/festivo <b>${fmtH(df)} h</b></span>`);
+    const filas = x.map(r => {
+      const f = new Date(y, m - 1, r[0]);
+      const dia = f.toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit' });
+      const ext = sinSep ? fmtH(r[5]) : fmtH(r[1]) + ' / ' + fmtH(r[2]);
+      return `<tr><td>${esc(dia)}</td><td>${ext}</td><td>${fmtH(r[3])}</td><td>${fmtH(r[4])}</td></tr>`;
+    }).join('');
+    return `<div class="extras"><h3>Horas extra y recargos programados</h3><div class="tot">${tot.join('')}</div>
+      <table><thead><tr><th>Día</th><th>${sinSep ? 'Extra' : 'Extra diurna / nocturna'}</th><th>Recargo nocturno</th><th>Dom./festivo</th></tr></thead><tbody>${filas}</tbody></table>
+      <p class="nota">Valores en horas, según la programación publicada. Los días marcados con <i class="x" style="position:static;display:inline-block;vertical-align:-1px;width:8px;height:8px;border-radius:50%;background:#FFC91D;border:1px solid #202E35"></i> tienen horas extra o recargos. El pago final lo liquida nómina con las horas realmente laboradas.</p></div>`;
   }
 
   const iso = d => ymd(d) + '-' + String(d.getDate()).padStart(2, '0');
