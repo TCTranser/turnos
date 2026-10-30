@@ -13,7 +13,7 @@ else {
   const okStr = (s, re) => typeof s === 'string' && re.test(s);
   const B64 = /^[A-Za-z0-9+/]+={0,2}$/;
   if (!d || d.v !== 1) throw new Error('Formato desconocido');
-  if (!okStr(d.grupo, /^[A-Za-z0-9_-]{1,40}$/)) throw new Error('Grupo inválido');
+  if (!okStr(d.grupo, /^[\p{L}\p{N} _.-]{1,60}$/u)) throw new Error('Grupo inválido');
   if (!okStr(d.periodo, /^\d{4}-\d{2}$/)) throw new Error('Periodo inválido');
   if (!Array.isArray(d.r)) throw new Error('Sin registros');
   for (const r of d.r) {
@@ -28,8 +28,9 @@ else {
   }
   const limpio = { v: 1, grupo: d.grupo, periodo: d.periodo, version: Number(d.version) || 0, generado: String(d.generado || new Date().toISOString()).slice(0, 30), iter: Number(d.iter) || 60000, turnos, r: d.r };
   fs.mkdirSync(DIR, { recursive: true });
-  fs.writeFileSync(path.join(DIR, `${d.periodo}_${d.grupo}.json`), JSON.stringify(limpio));
-  console.log(`Guardado ${d.periodo}_${d.grupo}.json con ${d.r.length} registros`);
+  const slug = d.grupo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'grupo';
+  fs.writeFileSync(path.join(DIR, `${d.periodo}_${slug}.json`), JSON.stringify(limpio));
+  console.log(`Guardado ${d.periodo}_${slug}.json con ${d.r.length} registros`);
 }
 const archivos = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter(f => /^\d{4}-\d{2}_[A-Za-z0-9_-]+\.json$/.test(f)) : [];
 const indice = archivos.map(f => {
