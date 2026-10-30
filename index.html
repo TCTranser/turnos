@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Consulta de turnos</title>
+<style>
+  :root {
+    --verde: #24453a; --verde-2: #2f5a4c; --naranja: #d9822b; --fondo: #f3f5f4; --tarjeta: #ffffff;
+    --texto: #1c2421; --suave: #5a6862; --borde: #dce2de; --rojo: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--texto); }
+  header { background: var(--verde); color: #fff; padding: 18px 16px; }
+  header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+  header p { margin: 4px 0 0; font-size: .85rem; color: #d2e1da; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  label { display: block; font-size: .85rem; color: var(--suave); margin: 10px 0 4px; }
+  input { width: 100%; padding: 12px; font-size: 1rem; border: 1px solid var(--borde); border-radius: 8px; }
+  input:focus { outline: 2px solid var(--naranja); border-color: transparent; }
+  button { margin-top: 14px; width: 100%; padding: 12px; font-size: 1rem; font-weight: 600; border: 0; border-radius: 8px; background: var(--verde); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: wait; }
+  button.secundario { background: transparent; color: var(--verde); border: 1px solid var(--verde); }
+  .msg { margin-top: 12px; font-size: .9rem; }
+  .msg.error { color: var(--rojo); }
+  .nota { font-size: .8rem; color: var(--suave); margin-top: 12px; line-height: 1.4; }
+  .hoy { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .hoy div { border-radius: 10px; padding: 14px; color: #fff; }
+  .hoy div:first-child { background: var(--verde); }
+  .hoy div:last-child { background: var(--naranja); }
+  .hoy small { display: block; opacity: .85; font-size: .8rem; }
+  .hoy strong { display: block; font-size: 1.15rem; margin-top: 2px; }
+  .hoy span { font-size: .85rem; }
+  h2 { font-size: 1.05rem; margin: 0 0 4px; }
+  .sub { font-size: .8rem; color: var(--suave); margin-bottom: 12px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal .dn { text-align: center; font-size: .72rem; color: var(--suave); font-weight: 600; padding-bottom: 2px; }
+  .cal .d { min-height: 58px; border-radius: 6px; border: 1px solid var(--borde); padding: 3px 4px; background: #fff; position: relative; }
+  .cal .d.vacio { border: 0; background: transparent; }
+  .cal .d .n { font-size: .7rem; color: var(--suave); }
+  .cal .d.dom .n { color: var(--rojo); font-weight: 600; }
+  .cal .d .t { font-size: 1.05rem; font-weight: 700; text-align: center; margin-top: 2px; }
+  .cal .d .h { font-size: .62rem; text-align: center; color: inherit; opacity: .85; }
+  .cal .d.es-hoy { outline: 2px solid var(--naranja); }
+  .resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; font-size: .82rem; }
+  .resumen span { background: var(--fondo); border-radius: 999px; padding: 4px 10px; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: .78rem; color: var(--suave); }
+  .leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--borde); }
+  .oculto { display: none; }
+  @media (max-width: 420px) { .cal .d { min-height: 50px; } .cal .d .h { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Consulta de turnos</h1>
+  <p>Programación publicada · solo lectura</p>
+</header>
+<main>
+  <section id="acceso" class="tarjeta">
+    <form id="form" autocomplete="off">
+      <label for="doc">Número de cédula</label>
+      <input id="doc" inputmode="text" autocomplete="off" required>
+      <label for="pin">PIN de consulta</label>
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off" required>
+      <button id="btn" type="submit">Consultar mis turnos</button>
+      <div id="msg" class="msg" role="status" aria-live="polite"></div>
+    </form>
+    <p class="nota">Tus turnos viajan cifrados y solo se abren en este dispositivo con tu cédula y tu PIN. Si no tienes PIN, pídeselo a tu supervisor.</p>
+  </section>
+
+  <section id="resultado" class="oculto">
+    <div id="saludo" class="tarjeta"></div>
+    <div id="hoy" class="hoy"></div>
+    <div id="meses"></div>
+    <button id="salir" class="secundario" type="button">Salir</button>
+  </section>
+</main>
+
+<script>
+(() => {
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const $ = id => document.getElementById(id);
+  const enc = new TextEncoder();
+  const subtle = window.crypto && window.crypto.subtle;
+
+  const normDoc = s => String(s).toUpperCase().replace(/[^0-9A-Z]/g, '');
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const hex = buf => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const color = c => /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20}|rgba?\([0-9 ,.]+\))$/.test(c || '') ? c : '';
+
+  function contraste(c) {
+    const m = /^#([0-9a-f]{6})/i.exec(c || '');
+    if (!m) return '#1c2421';
+    const n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#1c2421' : '#ffffff';
+  }
+
+  async function obtener(url) {
+    const r = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('No se pudo leer ' + url);
+    return r.json();
+  }
+
+  async function descifrar(reg, doc, pin, iter) {
+    const base = await subtle.importKey('raw', enc.encode(doc + '|' + pin), 'PBKDF2', false, ['deriveBits']);
+    const bits = new Uint8Array(await subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(reg.s), iterations: iter }, base, 512));
+    const kMac = await subtle.importKey('raw', bits.slice(32), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const s = b64(reg.s), iv = b64(reg.iv), ct = b64(reg.ct);
+    const datos = new Uint8Array(s.length + iv.length + ct.length);
+    datos.set(s, 0); datos.set(iv, s.length); datos.set(ct, s.length + iv.length);
+    if (!(await subtle.verify('HMAC', kMac, b64(reg.m), datos))) return null;
+    const kEnc = await subtle.importKey('raw', bits.slice(0, 32), 'AES-CTR', false, ['decrypt']);
+    const plano = await subtle.decrypt({ name: 'AES-CTR', counter: iv, length: 64 }, kEnc, ct);
+    return JSON.parse(new TextDecoder().decode(plano));
+  }
+
+  async function consultar(docIn, pin) {
+    const doc = normDoc(docIn);
+    if (!doc || !pin) throw new Error('Escribe tu cédula y tu PIN.');
+    const id = hex(await subtle.digest('SHA-256', enc.encode('T24|' + doc))).slice(0, 32);
+    const indice = await obtener('data/index.json');
+    const hoy = new Date();
+    const desde = ymd(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1));
+    const hasta = ymd(new Date(hoy.getFullYear(), hoy.getMonth() + 3, 1));
+    const candidatos = (indice.archivos || []).filter(a => a.periodo >= desde && a.periodo <= hasta);
+    const encontrados = [];
+    let pinMalo = false;
+    for (const a of candidatos) {
+      const arch = await obtener('data/' + a.archivo);
+      const reg = (arch.r || []).find(r => r.id === id);
+      if (!reg) continue;
+      const d = await descifrar(reg, doc, pin, arch.iter);
+      if (!d) { pinMalo = true; continue; }
+      encontrados.push({ periodo: arch.periodo, grupo: arch.grupo, version: arch.version, generado: arch.generado, turnos: arch.turnos || {}, dato: d });
+    }
+    if (!encontrados.length) throw new Error(pinMalo ? 'La cédula o el PIN no coinciden.' : 'No hay turnos publicados para esta cédula en los meses recientes.');
+    encontrados.sort((x, y) => x.periodo.localeCompare(y.periodo));
+    return encontrados;
+  }
+
+  function turnoDe(encontrados, fecha) {
+    const p = ymd(fecha);
+    for (const e of encontrados) {
+      if (e.periodo !== p) continue;
+      const cod = (e.dato.t || '').split(',')[fecha.getDate() - 1] || '';
+      if (cod && !(e.turnos[cod] && e.turnos[cod].d) && cod !== 'D') return { cod, t: e.turnos[cod] };
+    }
+    for (const e of encontrados) if (e.periodo === p) {
+      const cod = (e.dato.t || '').split(',')[fecha.getDate() - 1] || '';
+      if (cod) return { cod, t: e.turnos[cod] };
+    }
+    return null;
+  }
+
+  function tarjetaDia(titulo, x) {
+    if (!x) return `<div><small>${titulo}</small><strong>Sin programación</strong></div>`;
+    const t = x.t || {};
+    const desc = t.d || x.cod === 'D';
+    const horario = !desc && t.i ? `${esc(t.i)} a ${esc(t.f)}` : '';
+    return `<div><small>${titulo}</small><strong>${desc ? 'Descanso' : esc(t.n || x.cod)}</strong><span>${horario}</span></div>`;
+  }
+
+  function mes(e) {
+    const [y, m] = e.periodo.split('-').map(Number);
+    const primero = new Date(y, m - 1, 1);
+    const dias = new Date(y, m, 0).getDate();
+    const cods = (e.dato.t || '').split(',');
+    const hoy = new Date();
+    let html = DIAS.map(d => `<div class="dn">${d}</div>`).join('');
+    const offset = (primero.getDay() + 6) % 7;
+    for (let i = 0; i < offset; i++) html += '<div class="d vacio"></div>';
+    const cuenta = {};
+    for (let d = 1; d <= dias; d++) {
+      const cod = cods[d - 1] || '';
+      const t = e.turnos[cod] || {};
+      const bg = color(t.c);
+      const f = new Date(y, m - 1, d);
+      const clases = ['d'];
+      if (f.getDay() === 0) clases.push('dom');
+      if (f.toDateString() === hoy.toDateString()) clases.push('es-hoy');
+      const estilo = bg ? `style="background:${bg};color:${contraste(bg)}"` : '';
+      const h = cod && t.i && !t.d ? `${esc(t.i)}-${esc(t.f)}` : '';
+      html += `<div class="${clases.join(' ')}" ${estilo} title="${esc(t.n || cod)}"><div class="n" ${bg ? `style="color:${contraste(bg)}"` : ''}>${d}</div><div class="t">${esc(cod)}</div><div class="h">${h}</div></div>`;
+      if (cod) cuenta[cod] = (cuenta[cod] || 0) + 1;
+    }
+    const resumen = Object.entries(cuenta).map(([c, n]) => `<span>${esc((e.turnos[c] && e.turnos[c].n) || c)}: ${n}</span>`).join('');
+    const leyenda = Object.entries(e.turnos).map(([c, t]) => `<span><i style="background:${color(t.c) || '#fff'}"></i>${esc(c)} · ${esc(t.n)}${t.i && !t.d ? ' (' + esc(t.i) + '-' + esc(t.f) + ')' : ''}</span>`).join('');
+    const gen = e.generado ? new Date(e.generado).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    return `<section class="tarjeta"><h2>${MESES[m - 1][0].toUpperCase() + MESES[m - 1].slice(1)} ${y}</h2>
+      <div class="sub">Grupo ${esc(e.grupo)} · versión ${esc(e.version)}${gen ? ' · publicada ' + esc(gen) : ''}</div>
+      <div class="cal">${html}</div><div class="resumen">${resumen}</div><div class="leyenda">${leyenda}</div></section>`;
+  }
+
+  function mostrar(encontrados) {
+    const nombre = encontrados[encontrados.length - 1].dato.n || '';
+    $('saludo').innerHTML = `<h2>Hola, ${esc(nombre)}</h2><div class="sub" style="margin:0">Estos son tus turnos publicados. Cualquier cambio aparecerá aquí cuando se publique.</div>`;
+    const hoy = new Date(), man = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 1);
+    $('hoy').innerHTML = tarjetaDia('Hoy', turnoDe(encontrados, hoy)) + tarjetaDia('Mañana', turnoDe(encontrados, man));
+    $('meses').innerHTML = encontrados.map(mes).join('');
+    $('acceso').classList.add('oculto');
+    $('resultado').classList.remove('oculto');
+  }
+
+  $('form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const msg = $('msg'), btn = $('btn');
+    msg.textContent = ''; msg.className = 'msg';
+    if (!subtle) { msg.textContent = 'Este navegador no permite la consulta segura. Abre la página con https en un navegador actualizado.'; msg.className = 'msg error'; return; }
+    btn.disabled = true; btn.textContent = 'Consultando…';
+    try {
+      mostrar(await consultar($('doc').value, $('pin').value.trim()));
+      $('pin').value = '';
+    } catch (e) {
+      msg.textContent = e.message || 'No fue posible consultar.'; msg.className = 'msg error';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Consultar mis turnos';
+    }
+  });
+
+  $('salir').addEventListener('click', () => {
+    $('meses').innerHTML = ''; $('hoy').innerHTML = ''; $('saludo').innerHTML = '';
+    $('doc').value = ''; $('pin').value = '';
+    $('resultado').classList.add('oculto'); $('acceso').classList.remove('oculto');
+  });
+})();
+</script>
+</body>
+</html>
