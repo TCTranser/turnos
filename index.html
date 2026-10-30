@@ -4,59 +4,112 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Consulta de turnos</title>
+<meta name="theme-color" content="#202E35">
+<title>Consulta de turnos · Transer</title>
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAABoCAMAAAB8HT2JAAAAkFBMVEX83gBjSgD83QH84QD2mgD85QGacwD8oQH7mQHyoQH/AAC+kAD/VQAXFwAWEABGNQCRbQC/vwAAAAAAAAD8vAD85AL8lAL+xQD/qgD+uwAAAAD//wAAAAAAAAAyJQAAAAAAAACyhgAAAADLmAD/8wL91gBKNwCKaAAkGwAaEwB1WAClfAD/fwDrqQDYpAD+vQAMHvu+AAAAMHRSTlMc/VygHND+nmHXAf8DC6rCBwQA/v7+/v4DRdICL07+sI7+bv7//v7+/v7+/gL8/gi9qTpBAAAJ70lEQVR42uWdbXuqOBCGQ2tt7dlX5Jx4Iu9UEBT7///dxqIyCRlIFLQL+bDXFiN7ce/kyeSZEIk9urYmzz+N2st6vda6MxkhLJuYwfp4ticLiz/5kyGtJ/tzqrCOtD7McBF7NVVYnNazGa0Xst5PFtaavAwgW+OEdYXIP2nQGiksLtimsqVBa6ywzGWLi/x6srA+DWl9cJFfTxTWUeT7zk3HC2sAkR8xrKty0/VUYV0j8q2yNW5YPDf9MJStz/VEYfVtQIwbVs8GxMhh9Svyo4d1jQGxxmG5+m2gJ9qvhmuE9GdAcFhL/Rb/L6Ort9yU2J4BLHcYWZk9/R6wPc0MCxioAUHs2ADWQG7K64YO2pzNz15EntiBPqtgIMlaUGfgZkbrAymOEZvpwwoHQWV/OoM32ktuSlyDUegNAWtl/6bfj5ZStsg3kKy3O8AypaWULRLqs2L2MJH1eg9YpiKvKo4R9mB9f7dni7vAMhV5LlvvMixPagBeIH00zFRoz5z7tNtlq7E2HDoFldu/d9H3q2SrQUuG5Q6t54qUVIR1TCIHQeXcnJvKsLyh9by52LnAqrJt8d+az3z6iGpArfpU/3AShxrnppIBIcMKdVLQOGS8BRcRc+MwYF8tCEKvffR6vOuSd4zPrD4denqwQ1Sk/jZf5rmfWpGjgMEvJfNjp+3WTwtlF9g5ySyfN6t0aGRZVkSd23JTGRZrpqAuE664gehBeI31EqvNCZdVX2an78JEJXCrVXT1ZGXmS7fhDycP0KTYwh55cQA9aJGfms/5Uxql534lTazCiqyE3ibypFvfQ+FKKHbwWKuXE8PObtBcEXx+6Tt1slxxl1RgAZ6+boVTd7mA3B7h1519Soso9edJRm/LTUm3vgfgistETQs6Elj43VjF9J+jZNGDr75LntBany1lF/8MlJZ1TFL6A8Dnf2ZRmmZRdo3IA9mSYMWKFBRccaUclXWl+6z+U7lUcNf2gotVjt7mguIH2ucElEaXK9lmBzvM+fhN505WBappbrqui2MSrKCp7zWg2JXCgnUujuq7hciiYMZjZovfxT+x2rX8lyqgNKsvRDJNLvDFUeBvMyBIp77XwRaLcNyw06PodmFt4lBhfOW+n4th0cXqBJReRCoXWeXVKC7P6kavLo4RVN8VyYQEA0ZIfFR7V5gZA1vDhfWeNkn91zY7HB/nkAESVBhhx4e3siwroMplVNR3MVJTek5Kr1tS1yJPOlNSbKyxQGV0xcIdJP1nIV9hhsIN4+dNPW2lp8SJawwcREC6ObyoyktpAnCVx0kC+/9R0NsNiLUCVqu+15R4Y8tAbQoGMDbV3iGMt/DZEZ75kjNdLu4oTVWpAnV8GFpi9FURlqY8f11GtAcDQgEraGZKrpxwuo1HDpHgbEyeipH910v9kFuQVNWhVWzm6igBffhYBXirKN0dquVO2Z8BQTB9dxVhIHAJ1O6EC4ahh5hhAOLfAEUOnqYEfHJZfs6dfDhWhYw1jy5LR9qfAUH0U1JpvMXhqcWI7AUwghgyj1gbIObZpn6c5NycTDVOpbHK50w4h/ol7dc3rUSemOi7jv0XqvMwF4G1E/LHrF4a11W/LSbVQKYKOKcu85IOUhwjXZaDYSXMg3wwR9qFc10iaLKVSIYWFO6DBKueAFOBuY5PfU1uSjr03czf8mBSBpl4CNGjTEnrwq21OwBeYKz5VLbz6o82BVwLDuQykw7LIdbYFeJ6MRewgDFpuRNjpmssTGNzRU6eJRd9Bix9qW3BfXw0APsrjhF9fUetPKwWFGJ1oUBQIaq0HNLKzRIS0rYVzxKZMvssjpGOlJS1KJYXtG9PYlhQMpBxOuhCOj3aCaKkoS0F3XZ0qB0QpF3fXXwq9FjX9iRsLnQlewUadULjj92+hK5lCnRz6EDlnmfSbjl46Cjs3HwDmdgt+v6VJmTq4OJDMdOCVRTmo9CQFp8Pia6lHKBeDvQeYqW+B1gqltYLvZ0yukpNWFkqWRD9D0S+nCbK0cGa8RO3sWJBGHuiQx+C74Zt+n5JQst5kxdM8NMIb0nDOO2dFn+NmuhaDi6SvfKltafiAPXdw0wzwRA4FsMaJR4QWRm+PxDk77lh7dXEAiS6lgPyuAxbx2jpu5wR0Ua1K4l0xhdAmtIhavqVS0M09Z0hthdaHMK+C2+6BStAUEeNwJp4nmjBSlusvh5oncoWRNNSDtWiE2KpOcPnBqDvzu7cSrVRtcxKdBUDQW/VI7s32aq8UqJpOXhqefewOTJE5wbwwTxC1AsEioOpES0uy55dibk4PdEisvkX6ut79wKZf7Ds1vdkoR5joN6TbXx1ai7Y9BG62O5jIF6K+OQ2fY/x2r+GrjmJ+iHBajECdkIOcnO4RoKWg0V737hVVw6JnuUQIFACLKnX0XcfeCzQJYXeVAkjyK+rFbDgvwMFojntfQdlvfGItFkOiL6r5k1p2wdDvws+sATjPLso9lywpqApsT3VwRxo6/jQUk6u2wm30dobQq7QdyGEwioMpfJ0qGM5ZFSoX22LXXJIIsuXK++iNZjNMysXq/OJcqT2ROtJUb5vt5RdTMi/4DLW9GfQrakiCb99fUxFuVdbE8CZ8GnP+02F/WzEPCW17e5XWFxXR99ph11VZeOtG0e+6qvF9SlpB63jG+bvTVgG+o5t+IDFHA/7bixGQZtfdZ7Z6AGnNRet1h3td5u8+OoA0bKUG/a7aseH5yp32KD6XkUBTisDG9kQd9D/MlNv13eUFlFuk2y3lJsFwwYtvqKGsDSS/FMU0IOShCVukZwr9rLl2Zecw6Hc7zZ5+b2BM6yQXdoljOpLqpKOMP0xr9pte24e65Q7dl6Y8D2NVi5Xdw7y5ltnLs0FfC/fifZue24W7ZNW40W6W96+904busPY/F2MP89bus87tjPruK2bb9m2suhAldu6D7uvrd98VzfvUw7wbgHtOCPqcUcVENrc39/9vkBXnz7fhSJdr6Pcq83u85bhLbQ0XnS620ker98RFm19l/Vhw3C/+I6wLrRUrxs+CtZd3iK/ZSAqT3l9EKzV/d4yvI6W8mQH8qhjRN++KywHPxjqYZH1+m1hUfTsnsfAej+mpHdshgMRO03/UbMh+T3oYT1SK8tf+q0sP9GDeybQXn8ZtTfscPiHwVrdq/G5xCSufpVv6Kl/o4+slT0zi6tXez/VM//2a0NWi9l+qgckvu9NBWtm/zHVozc5q9JQ3PdTPdR1b78ZoSpf21iNG9b+CnF/n+oR56vZwlCw2n9QhoxbsEzFfTXVw/NNBatd3McN648es9HR/zrK3lCwFrPVZH9K5grB2k/1R4quEKzVVH/+atW7uI8X1r5/cR8trPfVftGb1TB2WKs+rYaRwxpGsMYJa/8+iGDZtv0fJ3hXvEdEazcAAAAASUVORK5CYII=">
 <style>
+  /* Identidad visual según el Manual de Marca TRANSER */
   :root {
-    --verde: #24453a; --verde-2: #2f5a4c; --naranja: #d9822b; --fondo: #f3f5f4; --tarjeta: #ffffff;
-    --texto: #1c2421; --suave: #5a6862; --borde: #dce2de; --rojo: #b42318;
+    /* Primarios */
+    --amarillo: #FFC91D; --verde: #81AD3E; --teal: #2A6565; --arena: #E4D49A; --azul: #202E35;
+    /* Complementarios */
+    --gris: #636D72; --gris-2: #8F969A; --gris-3: #BCC0C2; --amarillo-2: #FFD961; --amarillo-3: #FFEFBB;
+    --teal-2: #558484; --teal-3: #BFD1D1; --verde-2: #AECD78; --verde-3: #DCE9C5;
+    /* Uso en la interfaz */
+    --fondo: #F4F5F5; --tarjeta: #FFFFFF; --texto: var(--azul); --suave: var(--gris); --borde: #DDE0E1; --alerta: #B42318;
+    --fuente: "Helvetica Now Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --fuente-2: "Nexa", "Helvetica Now Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--texto); }
-  header { background: var(--verde); color: #fff; padding: 18px 16px; }
-  header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-  header p { margin: 4px 0 0; font-size: .85rem; color: #d2e1da; }
-  main { max-width: 760px; margin: 0 auto; padding: 16px; }
-  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-  label { display: block; font-size: .85rem; color: var(--suave); margin: 10px 0 4px; }
-  input { width: 100%; padding: 12px; font-size: 1rem; border: 1px solid var(--borde); border-radius: 8px; }
-  input:focus { outline: 2px solid var(--naranja); border-color: transparent; }
-  button { margin-top: 14px; width: 100%; padding: 12px; font-size: 1rem; font-weight: 600; border: 0; border-radius: 8px; background: var(--verde); color: #fff; cursor: pointer; }
+  body { margin: 0; font-family: var(--fuente); background: var(--fondo); color: var(--texto); -webkit-font-smoothing: antialiased; }
+
+  /* Barra superior con el logo en su versión a color sobre blanco (área de protección respetada) */
+  .barra { background: #fff; border-bottom: 4px solid var(--amarillo); }
+  .barra .cont { max-width: 760px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .barra img { height: 44px; width: auto; display: block; }
+  .barra .etiqueta { font-family: var(--fuente-2); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--teal); text-align: right; }
+
+  /* Banda de título */
+  .banda { background: var(--azul); color: #fff; position: relative; overflow: hidden; }
+  .banda::after { /* flecha decorativa inspirada en el símbolo de la marca */
+    content: ""; position: absolute; right: -40px; top: 0; bottom: 0; width: 180px;
+    background: var(--amarillo); clip-path: polygon(0 0, 45% 0, 100% 50%, 45% 100%, 0 100%, 55% 50%); opacity: .95; }
+  .banda .cont { max-width: 760px; margin: 0 auto; padding: 26px 16px 54px; position: relative; z-index: 1; padding-right: 150px; }
+  .banda h1 { margin: 0; font-size: 1.9rem; font-weight: 900; letter-spacing: -.01em; line-height: 1.1; }
+  .banda p { margin: 8px 0 0; color: var(--arena); font-size: .92rem; font-weight: 500; }
+
+  main { max-width: 760px; margin: -34px auto 0; padding: 0 16px 16px; position: relative; z-index: 2; }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(32,46,53,.06); }
+  label { display: block; font-size: .85rem; font-weight: 700; color: var(--azul); margin: 12px 0 6px; }
+  input { width: 100%; padding: 13px 12px; font-size: 1rem; font-family: var(--fuente); color: var(--azul); border: 1px solid var(--gris-3); border-radius: 8px; background: #fff; }
+  input:focus { outline: 3px solid var(--amarillo); outline-offset: 0; border-color: var(--azul); }
+  button { margin-top: 16px; width: 100%; padding: 14px; font-size: 1rem; font-weight: 800; font-family: var(--fuente); border: 0; border-radius: 8px; background: var(--amarillo); color: var(--azul); cursor: pointer; letter-spacing: .01em; }
+  button:hover { background: var(--amarillo-2); }
   button:disabled { opacity: .6; cursor: wait; }
-  button.secundario { background: transparent; color: var(--verde); border: 1px solid var(--verde); }
+  button.secundario { background: transparent; color: var(--azul); border: 2px solid var(--azul); font-weight: 700; }
+  button.secundario:hover { background: var(--azul); color: #fff; }
   .msg { margin-top: 12px; font-size: .9rem; }
-  .msg.error { color: var(--rojo); }
-  .nota { font-size: .8rem; color: var(--suave); margin-top: 12px; line-height: 1.4; }
+  .msg.error { color: var(--alerta); font-weight: 600; }
+  .nota { font-size: .8rem; color: var(--suave); margin: 14px 0 0; line-height: 1.45; padding-left: 10px; border-left: 3px solid var(--verde); }
+
+  /* Hoy / Mañana */
   .hoy { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .hoy div { border-radius: 10px; padding: 14px; color: #fff; }
-  .hoy div:first-child { background: var(--verde); }
-  .hoy div:last-child { background: var(--naranja); }
-  .hoy small { display: block; opacity: .85; font-size: .8rem; }
-  .hoy strong { display: block; font-size: 1.15rem; margin-top: 2px; }
-  .hoy span { font-size: .85rem; }
-  h2 { font-size: 1.05rem; margin: 0 0 4px; }
-  .sub { font-size: .8rem; color: var(--suave); margin-bottom: 12px; }
+  .hoy div { border-radius: 12px; padding: 16px; color: #fff; position: relative; overflow: hidden; }
+  .hoy div:first-child { background: var(--azul); }
+  .hoy div:last-child { background: var(--teal); }
+  .hoy div::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--amarillo); }
+  .hoy div:last-child::before { background: var(--verde); }
+  .hoy small { display: block; color: var(--arena); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .hoy strong { display: block; font-size: 1.3rem; font-weight: 900; margin-top: 4px; }
+  .hoy span { font-size: .9rem; opacity: .9; }
+
+  h2 { font-size: 1.15rem; font-weight: 900; margin: 0 0 4px; color: var(--azul); }
+  .sub { font-size: .8rem; color: var(--suave); margin-bottom: 14px; }
+
+  /* Calendario */
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .cal .dn { text-align: center; font-size: .72rem; color: var(--suave); font-weight: 600; padding-bottom: 2px; }
-  .cal .d { min-height: 58px; border-radius: 6px; border: 1px solid var(--borde); padding: 3px 4px; background: #fff; position: relative; }
+  .cal .dn { text-align: center; font-size: .72rem; color: var(--teal); font-weight: 800; padding-bottom: 4px; text-transform: uppercase; }
+  .cal .d { min-height: 60px; border-radius: 6px; border: 1px solid var(--borde); padding: 3px 4px; background: #fff; position: relative; }
   .cal .d.vacio { border: 0; background: transparent; }
-  .cal .d .n { font-size: .7rem; color: var(--suave); }
-  .cal .d.dom .n { color: var(--rojo); font-weight: 600; }
-  .cal .d .t { font-size: 1.05rem; font-weight: 700; text-align: center; margin-top: 2px; }
+  .cal .d .n { font-size: .7rem; color: var(--suave); font-weight: 600; }
+  .cal .d.dom .n { color: var(--alerta); font-weight: 800; }
+  .cal .d .t { font-size: 1.1rem; font-weight: 900; text-align: center; margin-top: 2px; }
   .cal .d .h { font-size: .62rem; text-align: center; color: inherit; opacity: .85; }
-  .cal .d.es-hoy { outline: 2px solid var(--naranja); }
-  .resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; font-size: .82rem; }
-  .resumen span { background: var(--fondo); border-radius: 999px; padding: 4px 10px; }
+  .cal .d.es-hoy { outline: 3px solid var(--amarillo); outline-offset: 1px; }
+  .resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; font-size: .82rem; }
+  .resumen span { background: var(--amarillo-3); color: var(--azul); border-radius: 999px; padding: 5px 11px; font-weight: 600; }
   .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: .78rem; color: var(--suave); }
   .leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--borde); }
   .oculto { display: none; }
-  @media (max-width: 420px) { .cal .d { min-height: 50px; } .cal .d .h { display: none; } }
+
+  /* Pie */
+  footer { background: var(--azul); color: var(--gris-3); margin-top: 24px; }
+  footer .cont { max-width: 760px; margin: 0 auto; padding: 18px 16px; display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; font-size: .78rem; }
+  footer strong { color: #fff; font-weight: 800; }
+  footer .lema { color: var(--amarillo); font-weight: 700; }
+
+  @media (max-width: 420px) {
+    .barra img { height: 36px; }
+    .banda h1 { font-size: 1.55rem; }
+    .banda .cont { padding-right: 110px; }
+    .banda::after { width: 130px; }
+    .cal .d { min-height: 50px; } .cal .d .h { display: none; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Consulta de turnos</h1>
-  <p>Programación publicada · solo lectura</p>
-</header>
+<div class="barra">
+  <div class="cont">
+    <img src="data:image/png;base64,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" alt="Transer">
+    <div class="etiqueta">Programación<br>de turnos</div>
+  </div>
+</div>
+<div class="banda">
+  <div class="cont">
+    <h1>Consulta tus turnos</h1>
+    <p>Programación publicada · solo lectura</p>
+  </div>
+</div>
 <main>
   <section id="acceso" class="tarjeta">
     <form id="form" autocomplete="off">
@@ -77,6 +130,12 @@
     <button id="salir" class="secundario" type="button">Salir</button>
   </section>
 </main>
+<footer>
+  <div class="cont">
+    <span><strong>TRANSER S.A.</strong> · www.transer.com.co</span>
+    <span class="lema">Somos Cambio · Somos Propósito · Somos Transformación</span>
+  </div>
+</footer>
 
 <script>
 (() => {
