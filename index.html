@@ -113,6 +113,12 @@
   .extras th:first-child, .extras td:first-child { text-align: left; }
   .extras .nota { margin-top: 10px; }
   .hoy em { display: block; font-style: normal; font-size: .78rem; margin-top: 6px; color: var(--amarillo-3); }
+  .descarga { border-left: 6px solid var(--teal); }
+  .descarga .rango { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .descarga .rango > div { min-width: 0; }
+  .descarga input { min-width: 0; padding: 12px 8px; }
+  .descarga button { background: var(--teal); color: #fff; }
+  .descarga button:hover { background: var(--azul); }
   .oculto { display: none; }
 
   /* Pie */
@@ -162,6 +168,7 @@
     <details id="ausencia" class="tarjeta ausencia"></details>
     <div id="hoy" class="hoy"></div>
     <div id="meses"></div>
+    <section id="descarga" class="tarjeta descarga"></section>
     <button id="salir" class="secundario" type="button">Salir</button>
   </section>
 </main>
@@ -192,6 +199,84 @@
   const DIAS_AVISO = 7;
   const MIN_ANTES = 60;
   let sesion = null;
+  // Generador mínimo de .xlsx (sin librerías externas): hojas con celdas de texto y número.
+  // hojas = [{ nombre, anchos: [n,...], filas: [[valor|{v, s}],...], congelar: filaEncabezado }]
+  // estilos: 0 normal · 1 encabezado · 2 número 0,00 · 3 título · 4 número 0,00 en negrita · 5 texto negrita
+  const XLSX_MIN = (() => {
+    const tabla = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; tabla[n] = c >>> 0; }
+    const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = tabla[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+    const xe = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+    const col = i => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+    function hoja(h) {
+      const filas = h.filas.map((f, r) => '<row r="' + (r + 1) + '">' + f.map((v, c) => {
+        if (v === null || v === undefined || v === '') return '';
+        const o = (typeof v === 'object') ? v : { v };
+        const ref = col(c) + (r + 1), s = o.s ? ' s="' + o.s + '"' : '';
+        return typeof o.v === 'number' && isFinite(o.v)
+          ? '<c r="' + ref + '"' + s + '><v>' + o.v + '</v></c>'
+          : '<c r="' + ref + '"' + s + ' t="inlineStr"><is><t xml:space="preserve">' + xe(o.v) + '</t></is></c>';
+      }).join('') + '</row>').join('');
+      const cols = (h.anchos || []).length ? '<cols>' + h.anchos.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>' : '';
+      const fr = h.congelar ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="' + h.congelar + '" topLeftCell="A' + (h.congelar + 1) + '" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' : '';
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + fr + cols + '<sheetData>' + filas + '</sheetData></worksheet>';
+    }
+    const ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>'
+      + '<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF202E35"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'
+      + '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF202E35"/><bgColor indexed="64"/></patternFill></fill></fills>'
+      + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+      + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+      + '<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+      + '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
+      + '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+      + '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+      + '<xf numFmtId="164" fontId="3" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>'
+      + '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+      + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    function zip(archivos) {
+      const te = new TextEncoder(), partes = [], central = [];
+      let off = 0;
+      const d = new Date(), hora = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+      const fecha = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+      for (const [nombre, texto] of archivos) {
+        const n = te.encode(nombre), b = te.encode(texto), c = crc32(b);
+        const lh = new DataView(new ArrayBuffer(30));
+        lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+        lh.setUint16(10, hora, true); lh.setUint16(12, fecha, true); lh.setUint32(14, c, true);
+        lh.setUint32(18, b.length, true); lh.setUint32(22, b.length, true); lh.setUint16(26, n.length, true); lh.setUint16(28, 0, true);
+        partes.push(new Uint8Array(lh.buffer), n, b);
+        const ch = new DataView(new ArrayBuffer(46));
+        ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+        ch.setUint16(12, hora, true); ch.setUint16(14, fecha, true); ch.setUint32(16, c, true);
+        ch.setUint32(20, b.length, true); ch.setUint32(24, b.length, true); ch.setUint16(28, n.length, true);
+        ch.setUint32(42, off, true);
+        central.push(new Uint8Array(ch.buffer), n);
+        off += 30 + n.length + b.length;
+      }
+      const tamC = central.reduce((a, x) => a + x.length, 0);
+      const fin = new DataView(new ArrayBuffer(22));
+      fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, archivos.length, true); fin.setUint16(10, archivos.length, true);
+      fin.setUint32(12, tamC, true); fin.setUint32(16, off, true);
+      return new Blob([...partes, ...central, new Uint8Array(fin.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+    return function libro(hojas) {
+      const ns = 'http://schemas.openxmlformats.org/';
+      const a = [
+        ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="' + ns + 'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+          + hojas.map((h, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('') + '</Types>'],
+        ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + ns + 'package/2006/relationships"><Relationship Id="rId1" Type="' + ns + 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+        ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="' + ns + 'spreadsheetml/2006/main" xmlns:r="' + ns + 'officeDocument/2006/relationships"><sheets>'
+          + hojas.map((h, i) => '<sheet name="' + xe(h.nombre).slice(0, 31) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join('') + '</sheets></workbook>'],
+        ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + ns + 'package/2006/relationships">'
+          + hojas.map((h, i) => '<Relationship Id="rId' + (i + 1) + '" Type="' + ns + 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join('')
+          + '<Relationship Id="rId' + (hojas.length + 1) + '" Type="' + ns + 'officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+        ['xl/styles.xml', ESTILOS]
+      ];
+      hojas.forEach((h, i) => a.push(['xl/worksheets/sheet' + (i + 1) + '.xml', hoja(h)]));
+      return zip(a);
+    };
+  })();
   const color = c => /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20}|rgba?\([0-9 ,.]+\))$/.test(c || '') ? c : '';
 
   function contraste(c) {
@@ -483,6 +568,111 @@
     }
   }
 
+  // ---- Descarga en Excel de lo programado (turnos, horas, extras y recargos) por rango de fechas ----
+  const MAX_DIAS_DESCARGA = 366;
+  const durH = t => { if (!t || t.d) return 0; const a = minutos(t.i), b = minutos(t.f); if (a < 0 || b < 0) return 0; let m = b - a; if (m <= 0) m += 1440; return Math.round(m / 60 * 100) / 100; };
+  const r2 = v => Math.round((Number(v) || 0) * 100) / 100;
+
+  function pintarDescarga() {
+    const hoy = new Date();
+    const ini = iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+    const fin = iso(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0));
+    $('descarga').innerHTML = `<h2>Descargar mis horas</h2>
+      <div class="sub">Excel con un resumen y el detalle día a día de tus turnos, horas extra y recargos programados.</div>
+      <div class="rango"><div><label for="dDesde">Desde</label><input id="dDesde" type="date" value="${ini}"></div>
+      <div><label for="dHasta">Hasta</label><input id="dHasta" type="date" value="${fin}"></div></div>
+      <button id="btnDescarga" type="button">Descargar Excel</button>
+      <div id="msgDescarga" class="msg" role="status" aria-live="polite"></div>`;
+    $('btnDescarga').addEventListener('click', descargarExcel);
+  }
+
+  async function mesesDeRango(desde, hasta) {
+    const pIni = desde.slice(0, 7), pFin = hasta.slice(0, 7);
+    const indice = await obtener('data/index.json');
+    const id = hex(await subtle.digest('SHA-256', enc.encode('T24|' + sesion.doc))).slice(0, 32);
+    const lista = [];
+    for (const a of (indice.archivos || []).filter(a => a.periodo >= pIni && a.periodo <= pFin)) {
+      const ya = sesion.encontrados.find(e => e.periodo === a.periodo && e.grupo === a.grupo && String(e.version) === String(a.version));
+      if (ya) { lista.push(ya); continue; }
+      const arch = await obtener('data/' + a.archivo);
+      const reg = (arch.r || []).find(r => r.id === id);
+      if (!reg) continue;
+      const d = await descifrar(reg, sesion.doc, sesion.pin, arch.iter);
+      if (d) lista.push({ periodo: arch.periodo, grupo: arch.grupo, version: arch.version, generado: arch.generado, turnos: arch.turnos || {}, dato: d });
+    }
+    return lista;
+  }
+
+  async function descargarExcel() {
+    const msg = $('msgDescarga'), btn = $('btnDescarga');
+    msg.textContent = ''; msg.className = 'msg';
+    const desde = $('dDesde').value, hasta = $('dHasta').value;
+    if (!desde || !hasta || desde > hasta) { msg.textContent = 'Revisa el rango: la fecha inicial debe ser anterior o igual a la final.'; msg.className = 'msg error'; return; }
+    const f0 = new Date(desde + 'T00:00:00'), f1 = new Date(hasta + 'T00:00:00');
+    const nDias = Math.round((f1 - f0) / 86400000) + 1;
+    if (nDias > MAX_DIAS_DESCARGA) { msg.textContent = 'El rango máximo es de un año.'; msg.className = 'msg error'; return; }
+    btn.disabled = true; btn.textContent = 'Preparando…';
+    try {
+      const meses = await mesesDeRango(desde, hasta);
+      if (!meses.length) throw new Error('No hay programación publicada para ese rango.');
+      const det = [], porMes = {};
+      const cab = ['Fecha', 'Día', 'Grupo', 'Código', 'Turno', 'Inicio', 'Fin', 'Horas programadas', 'Extra diurna (h)', 'Extra nocturna (h)', 'Extra total (h)', 'Recargo nocturno (h)', 'Dominical/festivo (h)'];
+      for (let i = 0; i < nDias; i++) {
+        const f = new Date(f0.getFullYear(), f0.getMonth(), f0.getDate() + i);
+        const p = ymd(f), dia = f.getDate();
+        const delMes = meses.filter(e => e.periodo === p);
+        const items = delMes.map(e => { const cod = (e.dato.t || '').split(',')[dia - 1] || ''; const t = e.turnos[cod] || {}; return { e, cod, t, desc: !cod || t.d || cod === 'D' }; }).filter(x => x.cod);
+        const trab = items.filter(x => !x.desc);
+        const usar = trab.length ? trab : items.slice(0, 1);
+        const nomDia = f.toLocaleDateString('es-CO', { weekday: 'long' });
+        if (!usar.length) { det.push([iso(f), nomDia, '', '', delMes.length ? 'Sin turno' : 'Sin programación publicada', '', '', 0, 0, 0, 0, 0, 0]); continue; }
+        for (const x of usar) {
+          const r = x.desc ? null : extrasDia(x.e, dia);
+          const hed = r ? r2(r[1]) : 0, hen = r ? r2(r[2]) : 0, rn = r ? r2(r[3]) : 0, df = r ? r2(r[4]) : 0;
+          const he = r ? r2(hed + hen > 0 ? hed + hen : r[5]) : 0;
+          const h = x.desc ? 0 : durH(x.t);
+          det.push([iso(f), nomDia, x.e.grupo, x.cod, x.desc ? 'Descanso' : (x.t.n || x.cod), x.desc ? '' : (x.t.i || ''), x.desc ? '' : (x.t.f || ''), h, hed, hen, he, rn, df]);
+          const m = porMes[p] || (porMes[p] = { grupos: new Set(), dias: 0, h: 0, hed: 0, hen: 0, he: 0, rn: 0, df: 0 });
+          m.grupos.add(x.e.grupo);
+          if (!x.desc) { m.dias++; m.h += h; m.hed += hed; m.hen += hen; m.he += he; m.rn += rn; m.df += df; }
+        }
+      }
+      const num = v => ({ v: r2(v), s: 2 }), numB = v => ({ v: r2(v), s: 4 });
+      const nombre = (meses[meses.length - 1].dato.n || '');
+      const res = [
+        [{ v: 'Resumen de horas programadas', s: 3 }],
+        [{ v: 'Empleado', s: 5 }, nombre], [{ v: 'Cédula', s: 5 }, sesion.doc],
+        [{ v: 'Rango', s: 5 }, desde + ' a ' + hasta],
+        [{ v: 'Generado', s: 5 }, new Date().toLocaleString('es-CO')], [],
+        ['Mes', 'Grupo', 'Días con turno', 'Horas programadas', 'Extra diurna (h)', 'Extra nocturna (h)', 'Extra total (h)', 'Recargo nocturno (h)', 'Dominical/festivo (h)'].map(v => ({ v, s: 1 }))
+      ];
+      const T = { dias: 0, h: 0, hed: 0, hen: 0, he: 0, rn: 0, df: 0 };
+      for (const p of Object.keys(porMes).sort()) {
+        const m = porMes[p], [y, mm] = p.split('-').map(Number);
+        res.push([MESES[mm - 1] + ' ' + y, [...m.grupos].join(', '), m.dias, num(m.h), num(m.hed), num(m.hen), num(m.he), num(m.rn), num(m.df)]);
+        for (const k of Object.keys(T)) T[k] += m[k];
+      }
+      res.push([{ v: 'Total', s: 5 }, '', { v: T.dias, s: 5 }, numB(T.h), numB(T.hed), numB(T.hen), numB(T.he), numB(T.rn), numB(T.df)]);
+      res.push([], ['Valores en horas según la programación publicada (no incluye valores en pesos). Si el mes no separa extra diurna/nocturna, se muestra solo el total de extras.'],
+        ['El pago final lo liquida nómina con las horas realmente laboradas.']);
+      const detalle = [cab.map(v => ({ v, s: 1 }))].concat(det.map(r => r.map((v, i) => i >= 7 ? num(v) : v)));
+      const blob = XLSX_MIN([
+        { nombre: 'Resumen', anchos: [22, 22, 15, 18, 16, 18, 15, 20, 20], filas: res },
+        { nombre: 'Detalle', anchos: [12, 12, 16, 8, 22, 8, 8, 18, 16, 18, 15, 20, 20], filas: detalle, congelar: 1 }
+      ]);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'Horas_' + sesion.doc + '_' + desde + '_a_' + hasta + '.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+      msg.textContent = 'Listo. Revisa tus descargas.';
+    } catch (e) {
+      msg.textContent = e.message || 'No fue posible preparar el archivo.'; msg.className = 'msg error';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Descargar Excel';
+    }
+  }
+
   function mostrar(encontrados) {
     const nombre = encontrados[encontrados.length - 1].dato.n || '';
     $('saludo').innerHTML = `<h2>Hola, ${esc(nombre)}</h2><div class="sub" style="margin:0">Estos son tus turnos publicados. Cualquier cambio aparecerá aquí cuando se publique.</div>`;
@@ -492,6 +682,7 @@
     pintarLlegada(true);
     $('ausencia').open = false;
     pintarAusencia();
+    pintarDescarga();
     $('acceso').classList.add('oculto');
     $('resultado').classList.remove('oculto');
   }
@@ -520,7 +711,7 @@
 
   $('salir').addEventListener('click', () => {
     sesion = null;
-    $('meses').innerHTML = ''; $('hoy').innerHTML = ''; $('saludo').innerHTML = ''; $('llegada').innerHTML = ''; $('ausencia').innerHTML = '';
+    $('meses').innerHTML = ''; $('hoy').innerHTML = ''; $('saludo').innerHTML = ''; $('llegada').innerHTML = ''; $('ausencia').innerHTML = ''; $('descarga').innerHTML = '';
     $('doc').value = ''; $('pin').value = '';
     $('resultado').classList.add('oculto'); $('acceso').classList.remove('oculto');
   });
