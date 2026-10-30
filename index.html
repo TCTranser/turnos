@@ -87,6 +87,20 @@
   .llegada button { margin-top: 12px; background: var(--verde); color: #fff; }
   .llegada button:hover { background: var(--teal); }
   .llegada .sin { color: var(--suave); font-size: .9rem; margin: 0; }
+  .ausencia { border-left: 6px solid var(--amarillo); }
+  .ausencia select, .ausencia textarea { width: 100%; padding: 12px; font-size: 1rem; font-family: var(--fuente); color: var(--azul); border: 1px solid var(--gris-3); border-radius: 8px; background: #fff; }
+  .ausencia textarea { min-height: 70px; resize: vertical; }
+  .ausencia select:focus, .ausencia textarea:focus { outline: 3px solid var(--amarillo); border-color: var(--azul); }
+  .motivos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .motivos label { margin: 0; display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1px solid var(--gris-3); border-radius: 999px; font-weight: 600; cursor: pointer; background: #fff; }
+  .motivos input { width: auto; margin: 0; accent-color: var(--teal); }
+  .motivos label:has(input:checked) { background: var(--amarillo-3); border-color: var(--amarillo); }
+  .ausencia button { background: var(--azul); color: #fff; }
+  .ausencia button:hover { background: var(--teal); }
+  details.ausencia > summary { cursor: pointer; font-weight: 900; font-size: 1.15rem; list-style: none; }
+  details.ausencia > summary::-webkit-details-marker { display: none; }
+  details.ausencia > summary::after { content: " ▾"; color: var(--suave); }
+  details.ausencia[open] > summary::after { content: " ▴"; }
   .oculto { display: none; }
 
   /* Pie */
@@ -133,6 +147,7 @@
   <section id="resultado" class="oculto">
     <div id="saludo" class="tarjeta"></div>
     <div id="llegada" class="tarjeta llegada"></div>
+    <details id="ausencia" class="tarjeta ausencia"></details>
     <div id="hoy" class="hoy"></div>
     <div id="meses"></div>
     <button id="salir" class="secundario" type="button">Salir</button>
@@ -159,7 +174,10 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   const FORM = 'https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=GkjzoYUkr0yFmBXzpZQ7f137oo8tAOdLpc3zcd1xL0hUQk1WMEFHOFJNVExJQjAxU0RWTVYyWDlWQS4u';
-  const Q = { emp: 'r10a2690187ca4e09b97da9445201e608', fecha: 'r7c0897f9756a4abb9fccd8bbb57e9c79', turno: 'rf272c69dcd9146d19f97219b6d7b0e3e', ubic: 'r783c9c47964441ffb31fed00c2d3740f', cod: 're95e62bd4ffe4e6f9450ff9e047b5cc3' };
+  const Q = { emp: 'r10a2690187ca4e09b97da9445201e608', fecha: 'r7c0897f9756a4abb9fccd8bbb57e9c79', turno: 'rf272c69dcd9146d19f97219b6d7b0e3e', ubic: 'r783c9c47964441ffb31fed00c2d3740f', cod: 're95e62bd4ffe4e6f9450ff9e047b5cc3',
+    tipo: 'r3e7635f8389240c48a069af112cd0b5c', motivo: 'r67523d465a5a4609bc59e94bc38b375b', obs: 'rb7829e8efb854279aa0cb9433f344e56' };
+  const MOTIVOS = ['Calamidad doméstica', 'Incapacidad', 'Otro'];
+  const DIAS_AVISO = 7;
   const MIN_ANTES = 60;
   let sesion = null;
   const color = c => /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20}|rgba?\([0-9 ,.]+\))$/.test(c || '') ? c : '';
@@ -331,8 +349,7 @@
     try {
       const ub = await ubicacion();
       const codigo = hex(await subtle.digest('SHA-256', enc.encode(['ASIS', sesion.doc, sesion.pin, x.emp, x.fecha, x.cod].join('|')))).slice(0, 16);
-      const url = FORM + '&' + [[Q.emp, x.emp], [Q.fecha, x.fecha], [Q.turno, x.cod], [Q.ubic, ub], [Q.cod, codigo]]
-        .map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+      const url = urlForm([[Q.emp, x.emp], [Q.fecha, x.fecha], [Q.turno, x.cod], [Q.ubic, ub], [Q.cod, codigo], [Q.tipo, 'Llegada']]);
       if (ventana) ventana.location.href = url; else window.location.href = url;
       msg.textContent = ub === 'sin ubicacion'
         ? 'No se pudo obtener la ubicación (permiso negado o sin señal). El registro quedará sin ubicación. Presiona Enviar en el formulario.'
@@ -346,6 +363,76 @@
     }
   }
 
+  const urlForm = pares => FORM + '&' + pares.map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+
+  // Turnos de trabajo que aún no terminan, de hoy (o el nocturno de ayer) a DIAS_AVISO días.
+  function turnosProximos(encontrados) {
+    const ahora = new Date(), lista = [];
+    for (let delta = -1; delta <= DIAS_AVISO; delta++) {
+      const f = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + delta);
+      for (const e of encontrados) {
+        if (e.periodo !== ymd(f)) continue;
+        const cod = (e.dato.t || '').split(',')[f.getDate() - 1] || '';
+        const t = e.turnos[cod];
+        if (!cod || cod === 'D' || !t || t.d) continue;
+        const ini = minutos(t.i), fin = minutos(t.f);
+        if (ini < 0 || fin < 0) continue;
+        const inicio = new Date(f.getFullYear(), f.getMonth(), f.getDate(), 0, ini);
+        const fin2 = new Date(inicio.getTime() + (fin > ini ? fin - ini : fin + 1440 - ini) * 60000);
+        if (fin2 < ahora) continue;
+        lista.push({ fecha: iso(f), cod, t, inicio, emp: e.dato.c || '' });
+      }
+    }
+    return lista.filter(x => x.emp);
+  }
+
+  function pintarAusencia() {
+    const caja = $('ausencia');
+    const lista = sesion ? turnosProximos(sesion.encontrados) : [];
+    const abierto = caja.open;
+    if (!lista.length) {
+      caja.innerHTML = `<summary>No voy a poder llegar</summary><p class="sin" style="margin-top:10px">No tienes turnos de trabajo en los próximos ${DIAS_AVISO} días para reportar.</p>`;
+      return;
+    }
+    const opc = lista.map((x, i) => {
+      const dia = x.inicio.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' });
+      return `<option value="${i}">${esc(dia)} · ${esc(x.t.n || x.cod)} (${esc(x.t.i)} a ${esc(x.t.f)})</option>`;
+    }).join('');
+    caja.innerHTML = `<summary>No voy a poder llegar</summary>
+      <label for="ausTurno">Turno al que no vas a llegar</label>
+      <select id="ausTurno">${opc}</select>
+      <label>Motivo</label>
+      <div class="motivos">${MOTIVOS.map((m, i) => `<label><input type="radio" name="ausMotivo" value="${esc(m)}">${esc(m)}</label>`).join('')}</div>
+      <label for="ausObs">Observación (opcional)</label>
+      <textarea id="ausObs" maxlength="400" placeholder="Ej.: número de incapacidad, detalle de la calamidad…"></textarea>
+      <button id="btnAusencia" type="button">Reportar inasistencia</button>
+      <div id="msgAusencia" class="msg" role="status" aria-live="polite"></div>
+      <p class="nota">Avisa lo antes posible para poder cubrir tu turno. Si es incapacidad, entrega el soporte a tu supervisor. Se abrirá un formulario ya diligenciado: solo debes presionar <b>Enviar</b>.</p>`;
+    caja.open = abierto;
+    $('btnAusencia').addEventListener('click', () => reportarAusencia(lista));
+  }
+
+  async function reportarAusencia(lista) {
+    const msg = $('msgAusencia');
+    msg.textContent = ''; msg.className = 'msg';
+    const x = lista[Number($('ausTurno').value)];
+    const sel = document.querySelector('input[name="ausMotivo"]:checked');
+    if (!x) return;
+    if (!sel) { msg.textContent = 'Selecciona el motivo.'; msg.className = 'msg error'; return; }
+    const motivo = sel.value;
+    const obs = $('ausObs').value.replace(/\s+/g, ' ').trim().slice(0, 400);
+    const ventana = window.open('', '_blank');
+    try {
+      const codigo = hex(await subtle.digest('SHA-256', enc.encode(['AUS', sesion.doc, sesion.pin, x.emp, x.fecha, x.cod, motivo].join('|')))).slice(0, 16);
+      const url = urlForm([[Q.emp, x.emp], [Q.fecha, x.fecha], [Q.turno, x.cod], [Q.ubic, 'no aplica'], [Q.cod, codigo], [Q.tipo, 'Inasistencia'], [Q.motivo, motivo], [Q.obs, obs]]);
+      if (ventana) ventana.location.href = url; else window.location.href = url;
+      msg.textContent = 'Formulario abierto. Presiona Enviar para completar el reporte.';
+    } catch (e) {
+      if (ventana) ventana.close();
+      msg.textContent = 'No fue posible preparar el reporte.'; msg.className = 'msg error';
+    }
+  }
+
   function mostrar(encontrados) {
     const nombre = encontrados[encontrados.length - 1].dato.n || '';
     $('saludo').innerHTML = `<h2>Hola, ${esc(nombre)}</h2><div class="sub" style="margin:0">Estos son tus turnos publicados. Cualquier cambio aparecerá aquí cuando se publique.</div>`;
@@ -353,6 +440,8 @@
     $('hoy').innerHTML = tarjetaDia('Hoy', turnoDe(encontrados, hoy)) + tarjetaDia('Mañana', turnoDe(encontrados, man));
     $('meses').innerHTML = encontrados.map(mes).join('');
     pintarLlegada(true);
+    $('ausencia').open = false;
+    pintarAusencia();
     $('acceso').classList.add('oculto');
     $('resultado').classList.remove('oculto');
   }
@@ -377,10 +466,11 @@
   });
 
   setInterval(() => { if (sesion) pintarLlegada(); }, 60000);
+  setInterval(() => { if (sesion && !$('ausencia').open) pintarAusencia(); }, 300000);
 
   $('salir').addEventListener('click', () => {
     sesion = null;
-    $('meses').innerHTML = ''; $('hoy').innerHTML = ''; $('saludo').innerHTML = ''; $('llegada').innerHTML = '';
+    $('meses').innerHTML = ''; $('hoy').innerHTML = ''; $('saludo').innerHTML = ''; $('llegada').innerHTML = ''; $('ausencia').innerHTML = '';
     $('doc').value = ''; $('pin').value = '';
     $('resultado').classList.add('oculto'); $('acceso').classList.remove('oculto');
   });
